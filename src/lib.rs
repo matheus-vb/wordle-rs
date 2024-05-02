@@ -86,12 +86,53 @@ mod tests {
     mod compute {
         use crate::Correctness;
 
+        macro_rules! mask {
+            (C) => { Correctness::Correct };
+            (M) => { Correctness::Misplaced };
+            (A) => { Correctness::Absent };
+            ($($c:tt)+) => {[
+                $(mask!($c)),+
+            ]}
+        }
+
         #[test]
-        fn basic() {
-            assert_eq!(
-                Correctness::compute("abcde", "abcde"),
-                [Correctness::Correct; 5],
-            )
+        fn all_correct() {
+            assert_eq!(Correctness::compute("abcde", "abcde"), mask![C C C C C],);
+        }
+
+        #[test]
+        fn all_misplaced() {
+            assert_eq!(Correctness::compute("abcde", "badec"), mask![M M M M M],);
+        }
+
+        #[test]
+        fn all_wrong() {
+            assert_eq!(Correctness::compute("abcde", "fffff"), mask![A A A A A],);
+        }
+
+        #[test]
+        fn repeat_correct() {
+            assert_eq!(Correctness::compute("aabbb", "aaccc"), mask![C C A A A],);
+        }
+
+        #[test]
+        fn repeat_misplaced() {
+            assert_eq!(Correctness::compute("aabbb", "bbcca"), mask![M M A A M],);
+        }
+
+        #[test]
+        fn mix_correct() {
+            assert_eq!(Correctness::compute("abcde", "abfed"), mask![C C A M M],);
+        }
+
+        #[test]
+        fn repeated_after_misplace() {
+            assert_eq!(Correctness::compute("abbab", "aaacc"), mask![C M A A A],);
+        }
+
+        #[test]
+        fn mix_abscent() {
+            assert_eq!(Correctness::compute("baccc", "aaddd"), mask![A C A A A],);
         }
     }
 }
