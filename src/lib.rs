@@ -200,6 +200,14 @@ mod tests {
 
             assert_eq!(w.play("right", guesser), Some(6));
         }
+
+        #[test]
+        fn wrong() {
+            let w = Wordle::new();
+            let guesser = guesser!(|_history| { "wrong".to_string() });
+
+            assert_eq!(w.play("right", guesser), None);
+        }
     }
 
     mod compute {
