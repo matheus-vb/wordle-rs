@@ -1,22 +1,44 @@
+use std::collections::HashSet;
+
 pub mod algorithms;
 
-pub fn play<G: Guesser>(answer: &'static str, guesser: G) -> Option<usize> {
-    let mut history = Vec::new();
+const DICTIONARY: &str = include_str!("../dictionary.txt");
 
-    for i in 1..=32 {
-        let guess = guesser.guess(&history);
+pub struct Wordle {
+    dictionary: HashSet<&'static str>,
+}
 
-        if guess == answer {
-            return Some(i);
+impl Wordle {
+    pub fn new() -> Self {
+        Self {
+            dictionary: HashSet::from_iter(DICTIONARY.lines().map(|line| {
+                line.split_once(' ')
+                    .expect("the lines consist of word + space + frequency")
+                    .1
+            })),
         }
-
-        let correctness = Correctness::compute(answer, &guess);
-        history.push(Guess {
-            word: guess,
-            maks: correctness,
-        })
     }
-    None
+
+    pub fn play<G: Guesser>(&self, answer: &'static str, guesser: G) -> Option<usize> {
+        let mut history = Vec::new();
+
+        for i in 1..=32 {
+            let guess = guesser.guess(&history);
+
+            if guess == answer {
+                return Some(i);
+            }
+
+            assert!(self.dictionary.contains(&*guess));
+
+            let correctness = Correctness::compute(answer, &guess);
+            history.push(Guess {
+                word: guess,
+                maks: correctness,
+            })
+        }
+        None
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -81,8 +103,39 @@ pub trait Guesser {
     fn guess(&self, history: &[Guess]) -> String;
 }
 
+impl Guesser for fn(history: &[Guess]) -> String {
+    fn guess(&self, history: &[Guess]) -> String {
+        (*self)(history)
+    }
+}
+
+#[cfg(test)]
+macro_rules! guesser {
+    (|$history:ident| $impl:block) => {{
+        struct G;
+        impl $crate::Guesser for G {
+            fn guess(&self, $history: &[crate::Guess]) -> String {
+                $impl
+            }
+        }
+        G
+    }};
+}
+
 #[cfg(test)]
 mod tests {
+    mod game {
+        use crate::Wordle;
+
+        #[test]
+        fn play() {
+            let w = Wordle::new();
+            let guesser = guesser!(|_history| { "moved".to_string() });
+
+            assert_eq!(w.play("moved", guesser), Some(1));
+        }
+    }
+
     mod compute {
         use crate::Correctness;
 
