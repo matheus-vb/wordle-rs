@@ -14,7 +14,7 @@ impl Wordle {
             dictionary: HashSet::from_iter(DICTIONARY.lines().map(|line| {
                 line.split_once(' ')
                     .expect("the lines consist of word + space + frequency")
-                    .1
+                    .0
             })),
         }
     }
@@ -128,11 +128,77 @@ mod tests {
         use crate::Wordle;
 
         #[test]
-        fn play() {
+        fn genius() {
             let w = Wordle::new();
             let guesser = guesser!(|_history| { "moved".to_string() });
 
             assert_eq!(w.play("moved", guesser), Some(1));
+        }
+
+        #[test]
+        fn magnificent() {
+            let w = Wordle::new();
+            let guesser = guesser!(|history| {
+                if history.len() == 1 {
+                    return "right".to_string();
+                }
+
+                "wrong".to_string()
+            });
+
+            assert_eq!(w.play("right", guesser), Some(2));
+        }
+
+        #[test]
+        fn impressive() {
+            let w = Wordle::new();
+            let guesser = guesser!(|history| {
+                if history.len() == 2 {
+                    return "right".to_string();
+                }
+                "wrong".to_string()
+            });
+
+            assert_eq!(w.play("right", guesser), Some(3));
+        }
+
+        #[test]
+        fn splendid() {
+            let w = Wordle::new();
+            let guesser = guesser!(|history| {
+                if history.len() == 3 {
+                    return "right".to_string();
+                }
+                "wrong".to_string()
+            });
+
+            assert_eq!(w.play("right", guesser), Some(4));
+        }
+
+        #[test]
+        fn great() {
+            let w = Wordle::new();
+            let guesser = guesser!(|history| {
+                if history.len() == 4 {
+                    return "right".to_string();
+                }
+                "wrong".to_string()
+            });
+
+            assert_eq!(w.play("right", guesser), Some(5));
+        }
+
+        #[test]
+        fn phew() {
+            let w = Wordle::new();
+            let guesser = guesser!(|history| {
+                if history.len() == 5 {
+                    return "right".to_string();
+                }
+                "wrong".to_string()
+            });
+
+            assert_eq!(w.play("right", guesser), Some(6));
         }
     }
 
