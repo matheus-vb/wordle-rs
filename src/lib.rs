@@ -96,11 +96,25 @@ impl Correctness {
 
 pub struct Guess {
     pub word: String,
-    pub maks: [Correctness; 5],
+    pub mask: [Correctness; 5],
 }
 
 pub trait Guesser {
     fn guess(&self, history: &[Guess]) -> String;
+}
+
+impl Guess {
+    pub fn matches(&self, word: &str) -> bool {
+        assert_eq!(self.word.len(), 5);
+        assert_eq!(word.len(), 5);
+
+        //check green
+        for ((prev_guess, mask), w) in self.word.chars().zip(&self.mask).zip(word.chars()) {
+            match mask {
+                Correctness::Correct => {}
+            }
+        }
+    }
 }
 
 impl Guesser for fn(history: &[Guess]) -> String {
