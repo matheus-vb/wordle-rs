@@ -34,7 +34,7 @@ impl Wordle {
             let correctness = Correctness::compute(answer, &guess);
             history.push(Guess {
                 word: guess,
-                maks: correctness,
+                mask: correctness,
             })
         }
         None
@@ -108,12 +108,78 @@ impl Guess {
         assert_eq!(self.word.len(), 5);
         assert_eq!(word.len(), 5);
 
-        //check green
-        for ((prev_guess, mask), w) in self.word.chars().zip(&self.mask).zip(word.chars()) {
-            match mask {
-                Correctness::Correct => {}
+        let mut used = [false; 5];
+
+        //check greens
+        for (i, ((prev_guess, &cur_mask), cur_word)) in self
+            .word
+            .chars()
+            .zip(&self.mask)
+            .zip(word.chars())
+            .enumerate()
+        {
+            if cur_mask == Correctness::Correct {
+                if prev_guess != cur_word {
+                    return false;
+                } else {
+                    used[i] = true;
+                }
             }
         }
+
+        //check yellows
+        for (i, (cur_word, &cur_mask)) in word.chars().zip(&self.mask).enumerate() {
+            if cur_mask == Correctness::Correct {
+                continue; // have to be correct, or it would have returned in the earlier loop
+            }
+
+            let mut plausible = true;
+            if self
+                .word
+                .chars()
+                .zip(&self.mask)
+                .enumerate()
+                .any(|(j, (g, m))| {
+                    if g != cur_word {
+                        return false;
+                    }
+
+                    if used[j] {
+                        return false;
+                    }
+
+                    // looking at an 'w' in 'word', and have found an 'w' in the previous guess
+                    // the color of that previous 'w' will tell whether this 'w' might be ok
+                    match m {
+                        Correctness::Correct => {
+                            unreachable!("correct guesses should have result in return or be used")
+                        }
+                        Correctness::Misplaced if j == i => {
+                            // 'w' was yellow in the same position las time, so
+                            // 'word' cannot be the answer
+                            plausible = false;
+                            return false;
+                        }
+                        Correctness::Misplaced => {
+                            used[j] = true;
+                            return true;
+                        }
+                        Correctness::Absent => {
+                            plausible = false;
+                            return false;
+                        }
+                    }
+                })
+                && plausible
+            {
+                // the 'w' character was yellow in the previous guess
+            } else if !plausible {
+                return false;
+            } else {
+                // no information about character 'w', so word might still match
+            }
+        }
+        true
     }
 }
 
