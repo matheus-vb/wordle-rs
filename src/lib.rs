@@ -19,7 +19,7 @@ impl Wordle {
         }
     }
 
-    pub fn play<G: Guesser>(&self, answer: &'static str, guesser: G) -> Option<usize> {
+    pub fn play<G: Guesser>(&self, answer: &'static str, mut guesser: G) -> Option<usize> {
         let mut history = Vec::new();
 
         for i in 1..=32 {
@@ -100,7 +100,7 @@ pub struct Guess {
 }
 
 pub trait Guesser {
-    fn guess(&self, history: &[Guess]) -> String;
+    fn guess(&mut self, history: &[Guess]) -> String;
 }
 
 impl Guess {
@@ -184,7 +184,7 @@ impl Guess {
 }
 
 impl Guesser for fn(history: &[Guess]) -> String {
-    fn guess(&self, history: &[Guess]) -> String {
+    fn guess(&mut self, history: &[Guess]) -> String {
         (*self)(history)
     }
 }
@@ -194,7 +194,7 @@ macro_rules! guesser {
     (|$history:ident| $impl:block) => {{
         struct G;
         impl $crate::Guesser for G {
-            fn guess(&self, $history: &[crate::Guess]) -> String {
+            fn guess(&mut self, $history: &[crate::Guess]) -> String {
                 $impl
             }
         }
@@ -203,7 +203,48 @@ macro_rules! guesser {
 }
 
 #[cfg(test)]
+macro_rules! mask {
+            (C) => { $crate::Correctness::Correct };
+            (M) => { $crate::Correctness::Misplaced };
+            (A) => { $crate::Correctness::Absent };
+            ($($c:tt)+) => {[
+                $(mask!($c)),+
+            ]}
+}
+
+#[cfg(test)]
 mod tests {
+    mod guess_match {
+        use crate::Guess;
+
+        macro_rules! check {
+            ($prev:literal + [$($mask:tt)+] allows $next:literal) => {
+                assert!(Guess {
+                    word: $prev.to_string(),
+                    mask: mask![$($mask )+]
+                }
+                .matches($next));
+                assert_eq!($crate::Correctness::compute($next, $prev), mask![$($mask )+]);
+            };
+            ($prev:literal + [$($mask:tt)+] disallows $next:literal) => {
+                assert!(!Guess {
+                    word: $prev.to_string(),
+                    mask: mask![$($mask )+]
+                }
+                .matches($next));
+                assert_ne!($crate::Correctness::compute($next, $prev), mask![$($mask )+]);
+            }
+        }
+
+        #[test]
+        fn matches() {
+            check!("abcde" + [C C C C C] allows "abcde");
+            check!("abcdf" + [C C C C C] disallows "abcde");
+            check!("abcde" + [M M M M M] allows "edbca");
+            check!("baaaa" + [A C M A A] disallows "caacc");
+        }
+    }
+
     mod game {
         use crate::Wordle;
 
@@ -292,15 +333,6 @@ mod tests {
 
     mod compute {
         use crate::Correctness;
-
-        macro_rules! mask {
-            (C) => { Correctness::Correct };
-            (M) => { Correctness::Misplaced };
-            (A) => { Correctness::Absent };
-            ($($c:tt)+) => {[
-                $(mask!($c)),+
-            ]}
-        }
 
         #[test]
         fn all_correct() {

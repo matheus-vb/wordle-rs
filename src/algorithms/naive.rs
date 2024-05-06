@@ -28,7 +28,7 @@ struct Candidate {
 }
 
 impl Guesser for Naive {
-    fn guess(&self, history: &[Guess]) -> String {
+    fn guess(&mut self, history: &[Guess]) -> String {
         if let Some(last) = history.last() {
             //update self.remaingin based on history
             self.remaining.retain(|word, _| last.matches(word));
